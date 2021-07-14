@@ -10,6 +10,7 @@ from textwrap import TextWrapper
 from plumbum import colors, local
 from plumbum.cli.i18n import get_translation_for
 from plumbum.lib import getdoc, six
+
 from .switches import (
     CountOf,
     Flag,
@@ -72,7 +73,6 @@ class Subcommand(object):
 
 _switch_groups = ["Switches", "Meta-switches"]
 _switch_groups_l10n = [T_("Switches"), T_("Meta-switches")]
-
 
 # ===================================================================================================
 # CLI Application base class
