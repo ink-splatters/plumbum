@@ -62,6 +62,7 @@ class TestNSApp:
             PROGNAME = colors.blue | "NSApp"
             VERSION = "1.2.3"
             COLOR_GROUPS = {"Switches": colors.green}
+            COLOR_GROUP_TITLES = {"Switches": colors.bold & colors.green}
 
             @cli.switch(["b"], help="this is a bacon switch")
             def bacon(self):
