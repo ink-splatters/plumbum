@@ -10,7 +10,6 @@ from textwrap import TextWrapper
 from plumbum import colors, local
 from plumbum.cli.i18n import get_translation_for
 from plumbum.lib import getdoc, six
-
 from .switches import (
     CountOf,
     Flag,
@@ -74,6 +73,7 @@ class Subcommand(object):
 _switch_groups = ["Switches", "Meta-switches"]
 _switch_groups_l10n = [T_("Switches"), T_("Meta-switches")]
 
+
 # ===================================================================================================
 # CLI Application base class
 # ===================================================================================================
@@ -124,16 +124,15 @@ class Application(object):
       one of '-', '*', and '/'; so that they are not combined with preceding paragraphs. Bullet '/' is
       "invisible", meaning that the bullet itself will not be printed to the output.
 
-    * ``USAGE`` - the usage line (shown in help)
+    * ``USAGE`` - the usage line (shown in help).
 
-    * ``COLOR_USAGE`` - The color of the usage line
+    * ``COLOR_USAGE`` - The color of the usage line.
 
     * ``COLOR_GROUPS`` - A dictionary that sets colors for the groups, like Meta-switches, Switches,
-      and Subcommands
+      and Subcommands.
 
-    * ``COLOR_GROUP_TITLES`` - A dictionary that sets colors for the group titles, like Meta-switches, Switches,
-      and Subcommands. If the dictionary is empty, the colors are taken from ``COLOR_GROUPS`` and
-      set for the whole group (including title)
+    * ``COLOR_GROUP_TITLES`` - A dictionary that sets colors for the group titles. If the dictionary is empty,
+      it defaults to ``COLOR_GROUPS``.
 
     * ``SUBCOMMAND_HELPMSG`` - Controls the printing of extra "see subcommand -h" help message.
       Default is a message, set to False to remove.
