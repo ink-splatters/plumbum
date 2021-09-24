@@ -86,16 +86,15 @@ class TestNSApp:
 
         expected = f'{colors.bold & colors.blue | "NSApp"} {colors.bold | "1.2.3"}'
         assert str(colors.bold & colors.cyan | "Switches:") in output
-<<<<<<< Updated upstream
         assert "-b" in output
         assert str(colors.red | "crunchy") in output
         assert str(colors.cyan | "this is a bacon switch") in output
         assert expected in output
-=======
+        
         assert str(colors.bold & colors.cyan | "Usage:") in output
         assert f'{colors.green | "    "}' in output
->>>>>>> Stashed changes
 
+        # TODO: uncomment
         # assert str(colors.blue | "-h, --help") in output
         # assert str(colors.cyan | "Prints this help message and quits") in output
         #

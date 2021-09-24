@@ -57,6 +57,7 @@ class Geet(cli.Application):
     PROGNAME = colors.green
     VERSION = colors.blue | "1.7.2"
     COLOR_USAGE_TITLE = colors.bold | colors.magenta
+    COLOR_USAGE_TITLE = colors.bold | colors.magenta
     COLOR_USAGE = colors.magenta
     COLOR_GROUPS = {
         "Meta-switches": colors.bold,
