@@ -59,10 +59,14 @@ class TestNSApp:
         colors.use_color = 4
 
         class NotSoSimpleApp(cli.Application):
-            PROGNAME = colors.blue | "NSApp"
-            VERSION = "1.2.3"
-            COLOR_GROUPS = {"Switches": colors.cyan}
+            PROGNAME = colors.bold & colors.blue | "NSApp"
+            VERSION = colors.bold | "1.2.3"
+            GROUP_NAMES = ["Switches"]
+            COLOR_GROUPS = {"Switches": colors.blue}
             COLOR_GROUP_TITLES = {"Switches": colors.bold & colors.cyan}
+            COLOR_USAGE = colors.green
+            COLOR_USAGE_TITLE = colors.bold & colors.cyan
+            COLOR_HELPMSG = colors.cyan
 
             @cli.switch(["b"], help="this is a bacon switch")
             def bacon(self):
@@ -76,15 +80,28 @@ class TestNSApp:
                 print("Eating!")
 
         _, rc = NotSoSimpleApp.run(["NotSoSimpleApp", "-h"], exit=False)
+
         output = capsys.readouterr()[0]
         assert rc == 0
-        expected = str((colors.blue | "NSApp") + " 1.2.3")
+
+        expected = f'{colors.bold & colors.blue | "NSApp"} {colors.bold | "1.2.3"}'
         assert str(colors.bold & colors.cyan | "Switches:") in output
+<<<<<<< Updated upstream
         assert "-b" in output
         assert str(colors.red | "crunchy") in output
         assert str(colors.cyan | "this is a bacon switch") in output
         assert expected in output
+=======
+        assert str(colors.bold & colors.cyan | "Usage:") in output
+        assert f'{colors.green | "    "}' in output
+>>>>>>> Stashed changes
 
+        # assert str(colors.blue | "-h, --help") in output
+        # assert str(colors.cyan | "Prints this help message and quits") in output
+        #
+        # assert str(colors.blue | "-b") in output
+        # assert str(colors.cyan | "this is a bacon switch") in output
+        # assert str(colors.blue | "-c") in output
+        # assert str(colors.red | "crunchy") in output
 
-if __name__ == "__main__":
-    NotSoSimpleApp.run()
+        assert expected in output

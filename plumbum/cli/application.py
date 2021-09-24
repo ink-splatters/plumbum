@@ -134,8 +134,11 @@ class Application(object):
     * ``COLOR_GROUP_TITLES`` - A dictionary that sets colors for the group titles. If the dictionary is empty,
       it defaults to ``COLOR_GROUPS``.
 
+    * ``COLOR_HELPMSG`` - The color of help messages. Overriden by @switch ``help``'s color attributes
+
     * ``SUBCOMMAND_HELPMSG`` - Controls the printing of extra "see subcommand -h" help message.
       Default is a message, set to False to remove.
+
 
     * ``ALLOW_ABBREV`` - Controls whether partial switch names are supported, for example '--ver' will match
       '--verbose'. Default is False for backward consistency with previous plumbum releases. Note that ambiguous
@@ -157,6 +160,7 @@ class Application(object):
     COLOR_USAGE = None
     COLOR_GROUPS = None
     COLOR_GROUP_TITLES = None
+    COLOR_HELPMSG = None
     CALL_MAIN_IF_NESTED_COMMAND = True
     SUBCOMMAND_HELPMSG = T_("see '{parent} {sub} --help' for more info")
     ALLOW_ABBREV = False
@@ -948,11 +952,14 @@ class Application(object):
                 padding = indentation
             else:
                 padding = " " * max(cols - wrapper.width - len(prefix) - 4, 1)
-            print(description_indent.format(color | prefix, padding, color | msg))
+
+            color_msg = self.COLOR_HELPMSG if self.COLOR_HELPMSG else color
+            print(description_indent.format(color | prefix, padding, color_msg | msg))
 
         if self._subcommands:
-            gc = self.COLOR_GROUP_TITLES["Subcommands"]
-            print(gc | T_("Sub-commands:"))
+            gtc = self.COLOR_GROUP_TITLES["Sub-commands"]
+            print(gtc | T_("Sub-commands:"))
+            gc = self.COLOR_GROUPS["Sub-commands"]
             for name, subcls in sorted(self._subcommands.items()):
                 with gc:
                     subapp = subcls.get()
@@ -974,13 +981,18 @@ class Application(object):
                     else:
                         padding = " " * max(cols - wrapper.width - len(name) - 4, 1)
                     if colors.contains_colors(subcls.name):
-                        bodycolor = colors.extract(subcls.name)
+                        name_color = colors.extract(subcls.name)
                     else:
-                        bodycolor = gc
+                        name_color = gc
 
+                    body_color = (
+                        self.COLOR_HELPMSG if self.COLOR_HELPMSG else name_color
+                    )
                     print(
                         description_indent.format(
-                            subcls.name, padding, bodycolor | colors.filter(msg)
+                            name_color | subcls.name,
+                            padding,
+                            body_color | colors.filter(msg),
                         )
                     )
 
