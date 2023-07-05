@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 import logging
 import os
 import socket
-import sys
 import time
-from copy import deepcopy
+from multiprocessing import Queue
+from threading import Thread
 
 import env
 import pytest
@@ -20,7 +19,6 @@ from plumbum import (
     local,
 )
 from plumbum._testtools import skip_on_windows, skip_without_chown
-from plumbum.lib import six
 from plumbum.machines.session import HostPublicKeyUnknown, IncorrectLogin
 
 try:
@@ -36,6 +34,10 @@ pytestmark = pytest.mark.ssh
 
 def strassert(one, two):
     assert str(one) == str(two)
+
+
+def assert_is_port(port):
+    assert 0 < int(port) < 2**16
 
 
 # TEST_HOST = "192.168.1.143"
@@ -57,10 +59,7 @@ def test_connection():
     SshMachine(TEST_HOST)
 
 
-@pytest.mark.skip(
-    env.LINUX and env.PY[:2] == (3, 5), reason="Doesn't work on 3.5 on Linux on GHA"
-)
-def test_incorrect_login(sshpass):
+def test_incorrect_login(sshpass):  # noqa: ARG001
     with pytest.raises(IncorrectLogin):
         SshMachine(
             TEST_HOST,
@@ -75,7 +74,7 @@ def test_incorrect_login(sshpass):
 
 
 @pytest.mark.xfail(env.LINUX, reason="TODO: no idea why this fails on linux")
-def test_hostpubkey_unknown(sshpass):
+def test_hostpubkey_unknown(sshpass):  # noqa: ARG001
     with pytest.raises(HostPublicKeyUnknown):
         SshMachine(
             TEST_HOST,
@@ -91,19 +90,19 @@ class TestRemotePath:
 
     def test_name(self):
         name = RemotePath(self._connect(), "/some/long/path/to/file.txt").name
-        assert isinstance(name, six.string_types)
-        assert "file.txt" == str(name)
+        assert isinstance(name, str)
+        assert str(name) == "file.txt"
 
     def test_dirname(self):
         name = RemotePath(self._connect(), "/some/long/path/to/file.txt").dirname
         assert isinstance(name, RemotePath)
-        assert "/some/long/path/to" == str(name)
+        assert str(name) == "/some/long/path/to"
 
     def test_uri(self):
         p1 = RemotePath(self._connect(), "/some/long/path/to/file.txt")
-        assert "ftp://" == p1.as_uri("ftp")[:6]
-        assert "ssh://" == p1.as_uri("ssh")[:6]
-        assert "/some/long/path/to/file.txt" == p1.as_uri()[-27:]
+        assert p1.as_uri("ftp")[:6] == "ftp://"
+        assert p1.as_uri("ssh")[:6] == "ssh://"
+        assert p1.as_uri()[-27:] == "/some/long/path/to/file.txt"
 
     def test_stem(self):
         p = RemotePath(self._connect(), "/some/long/path/to/file.txt")
@@ -149,15 +148,14 @@ class TestRemotePath:
 
     @skip_without_chown
     def test_chown(self):
-        with self._connect() as rem:
-            with rem.tempdir() as dir:
-                p = dir / "foo.txt"
-                p.write(six.b("hello"))
-                # because we're connected to localhost, we expect UID and GID to be the same
-                assert p.uid == os.getuid()
-                assert p.gid == os.getgid()
-                p.chown(p.uid.name)
-                assert p.uid == os.getuid()
+        with self._connect() as rem, rem.tempdir() as dir:
+            p = dir / "foo.txt"
+            p.write(b"hello")
+            # because we're connected to localhost, we expect UID and GID to be the same
+            assert p.uid == os.getuid()
+            assert p.gid == os.getgid()
+            p.chown(p.uid.name)
+            assert p.uid == os.getuid()
 
     def test_parent(self):
         p1 = RemotePath(self._connect(), "/some/long/path/to/file.txt")
@@ -183,7 +181,7 @@ class TestRemotePath:
             assert not tmp.exists()
 
     @pytest.mark.xfail(
-        reason="mkdir's mode argument is not yet implemented " "for remote paths",
+        reason="mkdir's mode argument is not yet implemented for remote paths",
         strict=True,
     )
     def test_mkdir_mode(self):
@@ -230,7 +228,6 @@ class TestRemotePath:
 
         with self._connect() as rem:
             with rem.tempdir() as tmp:
-
                 # setup a file and make sure it exists...
                 (tmp / "file_a").touch()
                 assert (tmp / "file_a").exists()
@@ -269,7 +266,7 @@ class TestRemotePath:
             assert not tmp.exists()
 
 
-class BaseRemoteMachineTest(object):
+class BaseRemoteMachineTest:
     TUNNEL_PROG_AF_INET = r"""import sys, socket
 s = socket.socket()
 s.bind(("", 0))
@@ -323,20 +320,22 @@ s.close()
                 rem["pwd"]()
 
     def test_glob(self):
-        with self._connect() as rem:
-            with rem.cwd(os.path.dirname(os.path.abspath(__file__))):
-                filenames = [f.name for f in rem.cwd // ("*.py", "*.bash")]
-                assert "test_remote.py" in filenames
-                assert "slow_process.bash" in filenames
+        with self._connect() as rem, rem.cwd(
+            os.path.dirname(os.path.abspath(__file__))
+        ):
+            filenames = [f.name for f in rem.cwd // ("*.py", "*.bash")]
+            assert "test_remote.py" in filenames
+            assert "slow_process.bash" in filenames
 
     def test_glob_spaces(self):
-        with self._connect() as rem:
-            with rem.cwd(os.path.dirname(os.path.abspath(__file__))):
-                filenames = [f.name for f in rem.cwd // ("*space.txt")]
-                assert "file with space.txt" in filenames
+        with self._connect() as rem, rem.cwd(
+            os.path.dirname(os.path.abspath(__file__))
+        ):
+            filenames = [f.name for f in rem.cwd // ("*space.txt")]
+            assert "file with space.txt" in filenames
 
-                filenames = [f.name for f in rem.cwd // ("*with space.txt")]
-                assert "file with space.txt" in filenames
+            filenames = [f.name for f in rem.cwd // ("*with space.txt")]
+            assert "file with space.txt" in filenames
 
     def test_cmd(self):
         with self._connect() as rem:
@@ -360,6 +359,7 @@ s.close()
                 _, out, _ = sh.run("ls -a")
                 assert ".bashrc" in out or ".bash_profile" in out
 
+    @pytest.mark.xfail(env.PYPY, reason="PyPy sometimes fails here", strict=False)
     def test_env(self):
         with self._connect() as rem:
             with pytest.raises(ProcessExecutionError):
@@ -379,6 +379,7 @@ s.close()
                 p = rem.which("dummy-executable")
                 assert p == rem.cwd / "not-in-path" / "dummy-executable"
 
+    @pytest.mark.xfail(env.PYPY, reason="PyPy sometimes fails here", strict=False)
     @pytest.mark.parametrize(
         "env",
         [
@@ -405,7 +406,7 @@ s.close()
         with self._connect() as rem:
             with rem.tempdir() as dir:
                 assert dir.is_dir()
-                data = six.b("hello world")
+                data = b"hello world"
                 (dir / "foo.txt").write(data)
                 assert (dir / "foo.txt").read() == data
 
@@ -418,16 +419,13 @@ s.close()
     def test_iter_lines_timeout(self):
         with self._connect() as rem:
             try:
-                for i, (out, err) in enumerate(
+                for i, (out, err) in enumerate(  # noqa: B007
                     rem["ping"]["-i", 0.5, "127.0.0.1"].popen().iter_lines(timeout=4)
                 ):
                     print("out:", out)
                     print("err:", err)
-            except NotImplementedError:
-                try:
-                    pytest.skip(str(sys.exc_info()[1]))
-                except AttributeError:
-                    return
+            except NotImplementedError as err:
+                pytest.skip(str(err))
             except ProcessTimedOut:
                 assert i > 3
             else:
@@ -435,11 +433,11 @@ s.close()
 
     def test_iter_lines_error(self):
         with self._connect() as rem:
-            with pytest.raises(ProcessExecutionError) as ex:
-                for i, lines in enumerate(rem["ls"]["--bla"].popen()):
+            with pytest.raises(ProcessExecutionError) as ex:  # noqa: PT012
+                for i, _lines in enumerate(rem["ls"]["--bla"].popen()):  # noqa: B007
                     pass
                 assert i == 1
-            assert "/bin/ls: " in ex.value.stderr
+            assert "ls: " in ex.value.stderr
 
     def test_touch(self):
         with self._connect() as rem:
@@ -450,13 +448,24 @@ s.close()
             rfile.delete()
 
 
+def serve_reverse_tunnel(queue, port):
+    s = socket.socket()
+    s.bind(("", port))
+    s.listen(1)
+    s2, _ = s.accept()
+    data = s2.recv(100).decode("ascii").strip()
+    queue.put(data)
+    s2.close()
+    s.close()
+
+
 @skip_on_windows
 class TestRemoteMachine(BaseRemoteMachineTest):
     def _connect(self):
         return SshMachine(TEST_HOST)
 
-    def test_tunnel(self):
-
+    @pytest.mark.parametrize("dynamic_lport", [False, True])
+    def test_tunnel(self, dynamic_lport):
         for tunnel_prog in (self.TUNNEL_PROG_AF_INET, self.TUNNEL_PROG_AF_UNIX):
             with self._connect() as rem:
                 p = (rem.python["-u"] << tunnel_prog).popen()
@@ -467,15 +476,69 @@ class TestRemoteMachine(BaseRemoteMachineTest):
                 except ValueError:
                     dhost = None
 
-                with rem.tunnel(12222, port_or_socket, dhost=dhost) as tun:
+                lport = 12222 if not dynamic_lport else 0
+
+                with rem.tunnel(lport, port_or_socket, dhost=dhost) as tun:
+                    if not dynamic_lport:
+                        assert tun.lport == lport
+                    else:
+                        assert_is_port(tun.lport)
+                    assert tun.dport == port_or_socket
+                    assert not tun.reverse
+
                     s = socket.socket()
-                    s.connect(("localhost", 12222))
-                    s.send(six.b("world"))
+                    s.connect(("localhost", tun.lport))
+                    s.send(b"world")
                     data = s.recv(100)
                     s.close()
 
                 print(p.communicate())
                 assert data == b"hello world"
+
+    @pytest.mark.parametrize("dynamic_dport", [False, True])
+    def test_reverse_tunnel(self, dynamic_dport):
+        lport = 12223 + dynamic_dport
+        with self._connect() as rem:
+            queue = Queue()
+            tunnel_server = Thread(target=serve_reverse_tunnel, args=(queue, lport))
+            tunnel_server.start()
+            message = str(time.time())
+
+            if not dynamic_dport:
+                get_unbound_socket_remote = """import sys, socket
+s = socket.socket()
+s.bind(("", 0))
+s.listen(1)
+sys.stdout.write(str(s.getsockname()[1]))
+sys.stdout.flush()
+s.close()
+"""
+                p = (rem.python["-u"] << get_unbound_socket_remote).popen()
+                remote_socket = p.stdout.readline().decode("ascii").strip()
+            else:
+                remote_socket = 0
+
+            with rem.tunnel(
+                lport, remote_socket, dhost="localhost", reverse=True
+            ) as tun:
+                assert tun.lport == lport
+                if not dynamic_dport:
+                    assert tun.dport == remote_socket
+                else:
+                    assert_is_port(tun.dport)
+                assert tun.reverse
+
+                remote_send_af_inet = """import socket
+s = socket.socket()
+s.connect(("localhost", {}))
+s.send("{}".encode("ascii"))
+s.close()
+""".format(
+                    tun.dport, message
+                )
+                (rem.python["-u"] << remote_send_af_inet).popen()
+                tunnel_server.join(timeout=1)
+                assert queue.get() == message
 
     def test_get(self):
         with self._connect() as rem:
@@ -564,7 +627,7 @@ class TestParamikoMachine(BaseRemoteMachineTest):
     def test_piping(self):
         with self._connect() as rem:
             try:
-                cmd = rem["ls"] | rem["cat"]
+                rem["ls"] | rem["cat"]
             except NotImplementedError:
                 pass
             else:
@@ -583,33 +646,28 @@ class TestParamikoMachine(BaseRemoteMachineTest):
 
     def test_path_open_remote_write_local_read(self):
         with self._connect() as rem:
-            # TODO: once Python 2.6 support is dropped, the nested
-            # with-statements below can be combined using "with x as a, y as b"
-            with rem.tempdir() as remote_tmpdir:
-                with local.tempdir() as tmpdir:
-                    assert remote_tmpdir.is_dir()
-                    assert tmpdir.is_dir()
-                    data = six.b("hello world")
-                    with (remote_tmpdir / "bar.txt").open("wb") as f:
-                        f.write(data)
-                    rem.download((remote_tmpdir / "bar.txt"), (tmpdir / "bar.txt"))
-                    assert (tmpdir / "bar.txt").open("rb").read() == data
+            with rem.tempdir() as remote_tmpdir, local.tempdir() as tmpdir:
+                assert remote_tmpdir.is_dir()
+                assert tmpdir.is_dir()
+                data = b"hello world"
+                with (remote_tmpdir / "bar.txt").open("wb") as f:
+                    f.write(data)
+                rem.download((remote_tmpdir / "bar.txt"), (tmpdir / "bar.txt"))
+                assert (tmpdir / "bar.txt").open("rb").read() == data
 
             assert not remote_tmpdir.exists()
             assert not tmpdir.exists()
 
     def test_path_open_local_write_remote_read(self):
         with self._connect() as rem:
-            # TODO: cf. note on Python 2.6 support above
-            with rem.tempdir() as remote_tmpdir:
-                with local.tempdir() as tmpdir:
-                    assert remote_tmpdir.is_dir()
-                    assert tmpdir.is_dir()
-                    data = six.b("hello world")
-                    with (tmpdir / "bar.txt").open("wb") as f:
-                        f.write(data)
-                    rem.upload((tmpdir / "bar.txt"), (remote_tmpdir / "bar.txt"))
-                    assert (remote_tmpdir / "bar.txt").open("rb").read() == data
+            with rem.tempdir() as remote_tmpdir, local.tempdir() as tmpdir:
+                assert remote_tmpdir.is_dir()
+                assert tmpdir.is_dir()
+                data = b"hello world"
+                with (tmpdir / "bar.txt").open("wb") as f:
+                    f.write(data)
+                rem.upload((tmpdir / "bar.txt"), (remote_tmpdir / "bar.txt"))
+                assert (remote_tmpdir / "bar.txt").open("rb").read() == data
 
             assert not remote_tmpdir.exists()
             assert not tmpdir.exists()

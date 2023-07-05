@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
+#!/usr/bin/env python3
 
 from plumbum import FG, cli, local
 from plumbum.cmd import convert, pdflatex

@@ -1,10 +1,12 @@
-# -*- coding: utf-8 -*-
-import pytest
-
 # Just check to see if this file is importable
-from plumbum.cli.image import Image
+from plumbum.cli.image import Image  # noqa: F401
 from plumbum.colorlib.names import FindNearest, color_html
-from plumbum.colorlib.styles import ANSIStyle, AttributeNotFound, Color, ColorNotFound
+from plumbum.colorlib.styles import (  # noqa: F401
+    ANSIStyle,
+    AttributeNotFound,
+    Color,
+    ColorNotFound,
+)
 
 
 class TestNearestColor:
@@ -62,7 +64,7 @@ class TestANSIColor:
         assert str(ANSIStyle(fgcolor=Color.from_simple("red"))) == "\033[31m"
 
 
-class TestNearestColor:
+class TestNearestColorAgain:
     def test_allcolors(self):
         myrange = (
             0,
@@ -87,6 +89,4 @@ class TestNearestColor:
             for g in myrange:
                 for b in myrange:
                     near = FindNearest(r, g, b)
-                    assert (
-                        near.all_slow() == near.all_fast()
-                    ), "Tested: {}, {}, {}".format(r, g, b)
+                    assert near.all_slow() == near.all_fast(), f"Tested: {r}, {g}, {b}"

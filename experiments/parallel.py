@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from plumbum.commands.base import BaseCommand
 from plumbum.commands.processes import CommandNotFound, ProcessExecutionError, run_proc
 
@@ -6,23 +5,25 @@ from plumbum.commands.processes import CommandNotFound, ProcessExecutionError, r
 def make_concurrent(self, rhs):
     if not isinstance(rhs, BaseCommand):
         raise TypeError("rhs must be an instance of BaseCommand")
+
     if isinstance(self, ConcurrentCommand):
         if isinstance(rhs, ConcurrentCommand):
             self.commands.extend(rhs.commands)
         else:
             self.commands.append(rhs)
         return self
-    elif isinstance(rhs, ConcurrentCommand):
+
+    if isinstance(rhs, ConcurrentCommand):
         rhs.commands.insert(0, self)
         return rhs
-    else:
-        return ConcurrentCommand(self, rhs)
+
+    return ConcurrentCommand(self, rhs)
 
 
 BaseCommand.__and__ = make_concurrent
 
 
-class ConcurrentPopen(object):
+class ConcurrentPopen:
     def __init__(self, procs):
         self.procs = procs
         self.stdin = None
@@ -70,7 +71,7 @@ class ConcurrentCommand(BaseCommand):
         for cmd in self.commands:
             form.extend(cmd.formulate(level, args))
             form.append("&")
-        return form + [")"]
+        return [*form, ")"]
 
     def popen(self, *args, **kwargs):
         return ConcurrentPopen([cmd[args].popen(**kwargs) for cmd in self.commands])
@@ -83,11 +84,11 @@ class ConcurrentCommand(BaseCommand):
             ]
         if not args:
             return self
-        else:
-            return ConcurrentCommand(*(cmd[args] for cmd in self.commands))
+
+        return ConcurrentCommand(*(cmd[args] for cmd in self.commands))
 
 
-class Cluster(object):
+class Cluster:
     def __init__(self, *machines):
         self.machines = list(machines)
 
@@ -151,7 +152,7 @@ class Cluster(object):
         return ClusterSession(*(mach.session() for mach in self))
 
 
-class ClusterSession(object):
+class ClusterSession:
     def __init__(self, *sessions):
         self.sessions = sessions
 
@@ -165,7 +166,7 @@ class ClusterSession(object):
         self.close()
 
     def __del__(self):
-        try:
+        try:  # noqa: 167
             self.close()
         except Exception:
             pass
@@ -200,7 +201,7 @@ if __name__ == "__main__":
     except ProcessExecutionError as ex:
         print(ex)
     else:
-        assert False
+        raise AssertionError("Expected an ProcessExecutionError")
 
     clst = Cluster(local, local, local)
     print(clst["ls"]())

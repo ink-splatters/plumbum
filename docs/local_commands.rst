@@ -93,11 +93,20 @@ Now that we can bind arguments to commands, forming pipelines is easy and straig
 using ``|`` (bitwise-or)::
 
     >>> chain = ls["-l"] | grep[".py"]
-    >>> print chain
+    >>> print(chain)
     C:\Program Files\Git\bin\ls.exe -l | C:\Program Files\Git\bin\grep.exe .py
     >>>
     >>> chain()
     '-rw-r--r--    1 sebulba  Administ        0 Apr 27 11:54 setup.py\n'
+
+.. note::
+  Unlike common posix shells, plumbum only captures stderr of the last command in a pipeline.
+  If any of the other commands writes a large amount of text to the stderr, the whole pipeline
+  will stall (large amount equals to >64k on posix systems). This can happen with bioinformatics
+  tools that write progress information to stderr. To avoid this issue, you can discard stderr
+  of the first commands or redirect it to a file.
+
+  >>> chain = (bwa["mem", ...] >= "/dev/null") | samtools["view", ...]
 
 .. _guide-local-commands-redir:
 
@@ -119,8 +128,7 @@ the output to a file named ``tmp.txt``::
 .. note::
    Parentheses are required here! ``grep["world"] < sys.stdin > "tmp.txt"`` would be evaluated
    according to the `rules for chained comparison operators
-   <https://docs.python.org/reference/expressions.html#comparisons>`_ and result in ``False``
-   (Python 2) or raise an exception (Python 3).
+   <https://docs.python.org/reference/expressions.html#comparisons>`_ and result an exception.
 
 Right after ``foo``, Ctrl+D was pressed, which caused ``grep`` to finish. The empty string
 at the end is the command's ``stdout`` (and it's empty because it actually went to a file).
@@ -165,10 +173,10 @@ one you passed::
    For instance, ``grep("foo", "myfile.txt", retcode = (0, 2))``
 
    If you need to have both the output/error and the exit code (using exceptions would provide either
-   but not both), you can use the `run` method, which will provide all of them
+   but not both), you can use the ``run`` method, which will provide all of them
 
    >>>  cat["non/existing.file"].run(retcode=None)
-   (1, u'', u'/bin/cat: non/existing.file: No such file or directory\n')
+   (1, '', '/bin/cat: non/existing.file: No such file or directory\n')
 
 
 
@@ -278,17 +286,17 @@ as we've seen above, but they can also be other **commands**! This allows nestin
 one another, forming complex command objects. The classic example is ``sudo``::
 
     >>> from plumbum.cmd import sudo
-    >>> print sudo[ls["-l", "-a"]]
+    >>> print(sudo[ls["-l", "-a"]])
     /usr/bin/sudo /bin/ls -l -a
 
     >>> sudo[ls["-l", "-a"]]()
-    u'total 22\ndrwxr-xr-x    8 sebulba  Administ     4096 May  9 20:46 .\n[...]'
+    'total 22\ndrwxr-xr-x    8 sebulba  Administ     4096 May  9 20:46 .\n[...]'
 
 In fact, you can nest even command-chains (i.e., pipes and redirections), e.g.,
 ``sudo[ls | grep["\\.py"]]``; however, that would require that the top-level program be able
 to handle these shell operators, and this is not the case for ``sudo``. ``sudo`` expects its
 argument to be an executable program, and it would complain about ``|`` not being one.
-So, there's a inherent differnce between between ``sudo[ls | grep["\\.py"]]``
+So, there's a inherent difference between between ``sudo[ls | grep["\\.py"]]``
 and ``sudo[ls] | grep["\\.py"]`` (where the pipe is unnested) -- the first would fail,
 the latter would work as expected.
 
@@ -303,7 +311,7 @@ We'll learn more about remote command execution :ref:`later <guide-remote-comman
 meanwhile, we should learn that command nesting works by *shell-quoting* (or *shell-escaping*)
 the nested command. Quoting normally takes place from the second level of nesting::
 
-    >>> print ssh["somehost", ssh["anotherhost", ls | grep["\\.py"]]]
+    >>> print(ssh["somehost", ssh["anotherhost", ls | grep["\\.py"]]])
     /bin/ssh somehost /bin/ssh anotherhost /bin/ls '|' /bin/grep "'\\.py'"
 
 In this example, we first ssh to ``somehost``, from it we ssh to ``anotherhost``, and on that host

@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
-$ python simple_cli.py --help
+$ python3 simple_cli.py --help
 simple_cli.py v1.0
 
 Usage: simple_cli.py [SWITCHES] srcfiles...
@@ -15,27 +14,26 @@ Switches:
     --loglevel LEVEL:int       Sets the log-level of the logger
     -v, --verbose              Enable verbose mode
 
-$ python simple_cli.py x.cpp y.cpp z.cpp
+$ python3 simple_cli.py x.cpp y.cpp z.cpp
 Verbose: False
 Include dirs: []
 Compiling: ('x.cpp', 'y.cpp', 'z.cpp')
 
-$ python simple_cli.py -v
+$ python3 simple_cli.py -v
 Verbose: True
 Include dirs: []
 Compiling: ()
 
-$ python simple_cli.py -v -Ifoo/bar -Ispam/eggs
+$ python3 simple_cli.py -v -Ifoo/bar -Ispam/eggs
 Verbose: True
 Include dirs: ['foo/bar', 'spam/eggs']
 Compiling: ()
 
-$ python simple_cli.py -v -I foo/bar -Ispam/eggs x.cpp y.cpp z.cpp
+$ python3 simple_cli.py -v -I foo/bar -Ispam/eggs x.cpp y.cpp z.cpp
 Verbose: True
 Include dirs: ['foo/bar', 'spam/eggs']
 Compiling: ('x.cpp', 'y.cpp', 'z.cpp')
 """
-from __future__ import print_function
 
 import logging
 

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 import logging
 
 from plumbum import cli, local
@@ -27,8 +26,7 @@ class FileCopier(cli.Application):
             if not self.overwrite:
                 logger.debug("Oh no! That's terrible")
                 raise ValueError("Destination already exists")
-            else:
-                delete(dst)
+            delete(dst)
 
         logger.debug("I'm going to copy %s to %s", src, dst)
         copy(src, dst)

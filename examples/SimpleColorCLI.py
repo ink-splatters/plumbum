@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-import plumbum
 from plumbum import cli, colors
 
 # from plumbum.colorlib import HTMLStyle, StyleFactory

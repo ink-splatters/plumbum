@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
+import itertools
+import logging
 import os
-import sys
+import re
 import tempfile
 
 import pytest
-
-if sys.version_info[0] < 3:
-    collect_ignore = ["test_3_cli.py"]
 
 SDIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -51,15 +49,9 @@ THE SOFTWARE.
 """
 
 
-import itertools
-import logging
-import re
-
-import pytest
-
 _logger = logging.getLogger(__name__)
 
-marker_re = re.compile(r"^(?P<marker>\w+)(:\s*(?P<description>.*))?")
+marker_re = re.compile(r"^\s*(?P<marker>\w+)(:\s*(?P<description>.*))?")
 
 
 def pytest_addoption(parser):
@@ -71,20 +63,19 @@ def pytest_addoption(parser):
         default=None,
         help="Optional test markers to run, multiple and/or comma separated okay",
     )
+    parser.addini(
+        "optional_tests", "list of optional markers", type="linelist", default=""
+    )
 
 
 def pytest_configure(config):
     # register all optional tests declared in ini file as markers
     # https://docs.pytest.org/en/latest/writing_plugins.html#registering-custom-markers
-    ot_ini = config.inicfg.get("optional_tests")  # None if NA
-    if ot_ini:
-        ot_ini = ot_ini.split("\n")
-    else:
-        ot_ini = []
-    for ot in ot_ini:
+    ot_ini = config.inicfg.get("optional_tests").strip().splitlines()
+    for ot_ in ot_ini:
         # ot should be a line like "optmarker: this is an opt marker", as with markers section
-        config.addinivalue_line("markers", ot)
-    ot_markers = {marker_re.match(l).group(1) for l in ot_ini}
+        config.addinivalue_line("markers", ot_)
+    ot_markers = {marker_re.match(ln).group(1) for ln in ot_ini}
 
     # collect requested optional tests
     ot_run = config.getoption("run_optional_tests")
@@ -96,7 +87,7 @@ def pytest_configure(config):
             ot_run = list(re.split(r"[,\s]+", ot_run))
     ot_run = set(ot_run)
 
-    _logger.info("optional tests to run:", ot_run)
+    _logger.info("optional tests to run: %s", ot_run)
     if ot_run:
         unknown_tests = ot_run - ot_markers
         if unknown_tests:

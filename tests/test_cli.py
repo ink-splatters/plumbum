@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-import sys
-
-import pytest
-
 from plumbum import cli, local
 from plumbum.cli.terminal import get_terminal_size
 
@@ -32,7 +27,9 @@ class SimpleApp(cli.Application):
         text wrapping in help messages as well""",
     )
 
-    csv = cli.SwitchAttr(["--csv"], cli.Set("MIN", "MAX", int, csv=True))
+    csv = cli.SwitchAttr(
+        ["--csv"], cli.Set("MIN", "MAX", int, csv=True, all_markers={"all"})
+    )
     num = cli.SwitchAttr(["--num"], cli.Set("MIN", "MAX", int))
 
     def main(self, *args):
@@ -40,6 +37,8 @@ class SimpleApp(cli.Application):
         self.eggs = "lalala"
         self.eggs = old
         self.tailargs = args
+
+        print(self.csv)
 
 
 class PositionalApp(cli.Application):
@@ -57,7 +56,7 @@ class Geet(cli.Application):
 
     def cleanup(self, retcode):
         self.cleanups.append(1)
-        print("geet cleaning up with rc = {}".format(retcode))
+        print(f"geet cleaning up with rc = {retcode}")
 
 
 @Geet.subcommand("add")
@@ -73,12 +72,11 @@ class GeetCommit(cli.Application):
     def main(self):
         if self.parent.debug:
             return "committing in debug"
-        else:
-            return "committing"
+        return "committing"
 
     def cleanup(self, retcode):
         self.parent.cleanups.append(2)
-        print("geet commit cleaning up with rc = {}".format(retcode))
+        print(f"geet commit cleaning up with rc = {retcode}")
 
 
 class Sample(cli.Application):
@@ -168,7 +166,7 @@ class TestCLI:
         _, rc = SimpleApp.run(["foo", "--version"], exit=False)
         assert rc == 0
 
-    def test_okay(self):
+    def test_okay(self, capsys):
         _, rc = SimpleApp.run(["foo", "--bacon=81"], exit=False)
         assert rc == 0
 
@@ -200,6 +198,14 @@ class TestCLI:
         _, rc = SimpleApp.run(["foo", "--bacon=81", "--num=100"], exit=False)
         assert rc == 0
 
+        capsys.readouterr()
+        _, rc = SimpleApp.run(["foo", "--bacon=81", "--csv=all,100"], exit=False)
+        assert rc == 0
+        output = capsys.readouterr()
+        assert "min" in output.out
+        assert "max" in output.out
+        assert "100" in output.out
+
         _, rc = SimpleApp.run(["foo", "--bacon=81", "--num=MAX"], exit=False)
         assert rc == 0
 
@@ -230,7 +236,6 @@ class TestCLI:
 
     # Testing #371
     def test_extra_args(self, capsys):
-
         _, rc = PositionalApp.run(["positionalapp"], exit=False)
         assert rc != 0
         stdout, stderr = capsys.readouterr()
@@ -291,7 +296,7 @@ class TestCLI:
             assert "  DEF" in stdout
             assert "   - Item" in stdout
             # List items should not be combined into paragraphs
-            assert "  * Star 2"
+            assert "  * Star 2" in stdout
             # Lines of the same list item should be combined. (The right-hand expression of the 'or' operator
             # below is for when the terminal is too narrow, causing "GHI" to be wrapped to the next line.)
             assert "  GHI" not in stdout or "     GHI" in stdout
@@ -360,7 +365,6 @@ class TestCLI:
         assert inst.eggs == "raw"
 
     def test_mandatory_env_var(self, capsys):
-
         _, rc = SimpleApp.run(["arg"], exit=False)
         assert rc == 2
         stdout, stderr = capsys.readouterr()

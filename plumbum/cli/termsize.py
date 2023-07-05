@@ -1,17 +1,19 @@
-# -*- coding: utf-8 -*-
 """
 Terminal size utility
 ---------------------
 """
-from __future__ import absolute_import, division, print_function
 
+import contextlib
 import os
 import platform
 import warnings
 from struct import Struct
+from typing import Optional, Tuple
+
+from plumbum import local
 
 
-def get_terminal_size(default=(80, 25)):
+def get_terminal_size(default: Tuple[int, int] = (80, 25)) -> Tuple[int, int]:
     """
     Get width and height of console; works on linux, os x, windows and cygwin
 
@@ -31,14 +33,14 @@ def get_terminal_size(default=(80, 25)):
 
     else:  # pragma: no cover
         warnings.warn(
-            "Plumbum does not know the type of the current OS for term size, defaulting to UNIX"
+            "Plumbum does not know the type of the current OS for term size, defaulting to UNIX",
+            stacklevel=2,
         )
         size = _get_terminal_size_linux()
 
-    if (
-        size is None
-    ):  # we'll assume the standard 80x25 if for any reason we don't know the terminal size
-        size = default
+    # we'll assume the standard 80x25 if for any reason we don't know the terminal size
+    if size is None:
+        return default
     return size
 
 
@@ -71,26 +73,25 @@ def _get_terminal_size_tput():  # pragma: no cover
         return None
 
 
-def _ioctl_GWINSZ(fd):
+def _ioctl_GWINSZ(fd: int) -> Optional[Tuple[int, int]]:
     yx = Struct("hh")
     try:
         import fcntl
         import termios
 
-        return yx.unpack(fcntl.ioctl(fd, termios.TIOCGWINSZ, "1234"))
+        # TODO: Clean this up. Problems could be hidden by the broad except.
+        return yx.unpack(fcntl.ioctl(fd, termios.TIOCGWINSZ, b"1234"))  # type: ignore[return-value]
     except Exception:
         return None
 
 
-def _get_terminal_size_linux():
+def _get_terminal_size_linux() -> Optional[Tuple[int, int]]:
     cr = _ioctl_GWINSZ(0) or _ioctl_GWINSZ(1) or _ioctl_GWINSZ(2)
     if not cr:
-        try:
+        with contextlib.suppress(Exception):
             fd = os.open(os.ctermid(), os.O_RDONLY)
             cr = _ioctl_GWINSZ(fd)
             os.close(fd)
-        except Exception:
-            pass
     if not cr:
         try:
             cr = (int(os.environ["LINES"]), int(os.environ["COLUMNS"]))

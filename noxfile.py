@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import nox
 
-ALL_PYTHONS = ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
+ALL_PYTHONS = ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
 
 nox.options.sessions = ["lint", "tests"]
 
@@ -17,13 +16,23 @@ def lint(session):
     session.run("pre-commit", "run", "--all-files", *session.posargs)
 
 
+@nox.session
+def pylint(session):
+    """
+    Run pylint.
+    """
+
+    session.install(".", "paramiko", "ipython", "pylint~=2.17.4")
+    session.run("pylint", "plumbum", *session.posargs)
+
+
 @nox.session(python=ALL_PYTHONS, reuse_venv=True)
 def tests(session):
     """
     Run the unit and regular tests.
     """
     session.install("-e", ".[dev]")
-    session.run("pytest", "--cov", *session.posargs)
+    session.run("pytest", *session.posargs)
 
 
 @nox.session(reuse_venv=True)
@@ -38,10 +47,10 @@ def docs(session):
 
     if session.posargs:
         if "serve" in session.posargs:
-            print("Launching docs at http://localhost:8000/ - use Ctrl-C to quit")
+            session.log("Launching docs at http://localhost:8000/ - use Ctrl-C to quit")
             session.run("python", "-m", "http.server", "8000", "-d", "_build/html")
         else:
-            print("Unsupported argument to docs")
+            session.log("Unsupported argument to docs")
 
 
 @nox.session

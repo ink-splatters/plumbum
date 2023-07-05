@@ -1,8 +1,50 @@
+1.8.2
+-----
+
+* Fix author metadata on PyPI package and add static check (`#648 <https://github.com/tomerfiliba/plumbum/pull/648>`_)
+* Add testing for Python 3.12 beta 1 (`#650 <https://github.com/tomerfiliba/plumbum/pull/650>`_)
+* Use Ruff for linting (`#643 <https://github.com/tomerfiliba/plumbum/pull/643>`_)
+* Paths: Add type hinting for Path (`#646 <https://github.com/tomerfiliba/plumbum/pull/646>`_)
+
+1.8.1
+-----
+
+* Accept path-like objects (`#627 <https://github.com/tomerfiliba/plumbum/pull/627>`_)
+* Move the build backend to hatchling and hatch-vcs. Users should be unaffected. Third-party packaging may need to adapt to the new build system. (`#607 <https://github.com/tomerfiliba/plumbum/pull/607>`_)
+
 1.8.0
 -----
 
-* SSHMachine: support forwarding Unix sockets in ``.tunnel()`` (`#550 <https://github.com/tomerfiliba/plumbum/pull/550>`_)
+* Drop Python 2.7 and 3.5 support, add 3.11 support (`#573 <https://github.com/tomerfiliba/plumbum/pull/573>`_)
+* Lots of extended checks and fixes for problems exposed.
+* Color: support ``NO_COLOR``/``FORCE_COLOR`` (`#575 <https://github.com/tomerfiliba/plumbum/pull/575>`_)
+* Commands: New ``iter_lines`` ``buffer_size`` parameter  (`#582 <https://github.com/tomerfiliba/plumbum/pull/582>`_)
+* Commands: cache remote commands (`#583 <https://github.com/tomerfiliba/plumbum/pull/583>`_)
+* SSH: Support reverse tunnels and dynamically allocated ports (`#608 <https://github.com/tomerfiliba/plumbum/pull/608>`_)
+* CLI: add ``Set(..., all_markers={"*", "all"})`` and fix support for other separators (`#619 <https://github.com/tomerfiliba/plumbum/pull/619>`_)
+* CLI: support future annotations (`#621 <https://github.com/tomerfiliba/plumbum/pull/621>`_)
+* Color: fix the ABC (`#617 <https://github.com/tomerfiliba/plumbum/pull/617>`_)
+* Exceptions: fix for exception pickling (`#586 <https://github.com/tomerfiliba/plumbum/pull/586>`_)
+* Fix for StdinDataRedirection and modifiers (`#605 <https://github.com/tomerfiliba/plumbum/pull/605>`_)
 
+
+1.7.2
+-----
+
+* Commands: avoid issue mktemp issue on some BSD variants (`#571 <https://github.com/tomerfiliba/plumbum/pull/571>`_)
+* Better specification of dependency on pywin32 (`#568 <https://github.com/tomerfiliba/plumbum/pull/568>`_)
+* Some DeprecationWarnings changed to FutureWarnings (`#567 <https://github.com/tomerfiliba/plumbum/pull/567>`_)
+
+
+1.7.1
+-----
+
+* Paths: glob with local paths no longer expands the existing path too (`#552 <https://github.com/tomerfiliba/plumbum/pull/552>`_)
+* Paramiko: support reverse tunnels (`#562 <https://github.com/tomerfiliba/plumbum/pull/562>`_)
+* SSHMachine: support forwarding Unix sockets in ``.tunnel()`` (`#550 <https://github.com/tomerfiliba/plumbum/pull/550>`_)
+* CLI: Support ``COLOR_GROUP_TITLES`` (`#553 <https://github.com/tomerfiliba/plumbum/pull/553>`_)
+* Fix a deprecated in Python 3.10 warning (`#563 <https://github.com/tomerfiliba/plumbum/pull/563>`_)
+* Extended testing and checking on Python 3.10 and various PyPy versions. Nox is supported for easier new-user development.
 
 1.7.0
 -----
@@ -38,7 +80,7 @@
 * Paths: support composing paths using subscription operations (`#455 <https://github.com/tomerfiliba/plumbum/pull/455>`_)
 * CLI: Improved 'Set' validator to allow non-string types, and CSV params (`#452 <https://github.com/tomerfiliba/plumbum/pull/452>`_)
 * TypedEnv: Facility for modeling environment-variables into python data types (`#451 <https://github.com/tomerfiliba/plumbum/pull/451>`_)
-* Commands: execute local/remote commands via a magic `.cmd` attribute (`#450 <https://github.com/tomerfiliba/plumbum/pull/450>`_)
+* Commands: execute local/remote commands via a magic ``.cmd`` attribute (`#450 <https://github.com/tomerfiliba/plumbum/pull/450>`_)
 
 1.6.7
 -----
@@ -118,7 +160,7 @@
 * Bugfix: Getting an executable no longer returns a directory  (`#234 <https://ithub.com/tomerfiliba/plumbum/issues/234>`_)
 * Bugfix: Iterdir now works on Python <3.5
 * Testing is now expanded and fully written in Pytest, with coverage reporting.
-* Added support for Conda ( as of 1.6.2, use the `-c conda-forge` channel)
+* Added support for Conda ( as of 1.6.2, use the ``-c conda-forge`` channel)
 
 1.6.0
 -----
@@ -144,7 +186,7 @@
 * CLI: add ``--help-all`` and various cosmetic fixes: (`#125 <https://github.com/tomerfiliba/plumbum/pull/125>`_),
   (`#126 <https://github.com/tomerfiliba/plumbum/pull/126>`_), (`#127 <https://github.com/tomerfiliba/plumbum/pull/127>`_)
 * CLI: add ``root_app`` property (`#141 <https://github.com/tomerfiliba/plumbum/pull/141>`_)
-* Machines: ``getattr`` now raises ``AttributeError`` instead of `CommandNotFound` (`#135 <https://github.com/tomerfiliba/plumbum/pull/135>`_)
+* Machines: ``getattr`` now raises ``AttributeError`` instead of ``CommandNotFound`` (`#135 <https://github.com/tomerfiliba/plumbum/pull/135>`_)
 * Paramiko: ``keep_alive`` support (`#186 <https://github.com/tomerfiliba/plumbum/pull/186>`_)
 * Paramiko: does not support piping explicitly now (`#160 <https://github.com/tomerfiliba/plumbum/pull/160>`_)
 * Parmaiko: Added pure SFTP backend, gives STFP v4+ support (`#188 <https://github.com/tomerfiliba/plumbum/pull/188>`_)

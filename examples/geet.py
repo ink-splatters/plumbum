@@ -1,15 +1,14 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
 Examples::
 
-    $ python geet.py
+    $ python3 geet.py
     no command given
 
-    $ python geet.py leet
+    $ python3 geet.py leet
     unknown command 'leet'
 
-    $ python geet.py --help
+    $ python3 geet.py --help
     geet v1.7.2
     The l33t version control
 
@@ -24,7 +23,7 @@ Examples::
         push                       pushes the current local branch to the remote
                                    one; see 'geet push --help' for more info
 
-    $ python geet.py commit --help
+    $ python3 geet.py commit --help
     geet commit v1.7.2
     creates a new commit in the current branch
 
@@ -37,7 +36,7 @@ Examples::
         -a                         automatically add changed files
         -m VALUE:str               sets the commit message; required
 
-    $ python geet.py commit -m "foo"
+    $ python3 geet.py commit -m "foo"
     committing...
 """
 
@@ -109,7 +108,7 @@ class GeetPush(cli.Application):
     tags = cli.Flag("--tags", help="whether to push tags (default is False)")
 
     def main(self, remote, branch="master"):
-        print("pushing to {}/{}...".format(remote, branch))
+        print(f"pushing to {remote}/{branch}...")
 
 
 if __name__ == "__main__":

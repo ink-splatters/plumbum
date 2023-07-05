@@ -1,23 +1,23 @@
-# -*- coding: utf-8 -*-
 import locale
 
 # High performance method for English (no translation needed)
 loc = locale.getlocale()[0]
 if loc is None or loc.startswith("en"):
 
-    class NullTranslation(object):
-        def gettext(self, str):
-            return str
+    class NullTranslation:
+        def gettext(self, str1: str) -> str:  # pylint: disable=no-self-use
+            return str1
 
-        def ngettext(self, str1, strN, n):
+        def ngettext(self, str1, strN, n):  # pylint: disable=no-self-use
             if n == 1:
                 return str1.replace("{0}", str(n))
-            else:
-                return strN.replace("{0}", str(n))
 
-    def get_translation_for(package_name):
+            return strN.replace("{0}", str(n))
+
+    def get_translation_for(
+        package_name: str,  # noqa: ARG001
+    ) -> NullTranslation:
         return NullTranslation()
-
 
 else:
     import gettext
@@ -27,16 +27,11 @@ else:
     try:
         import pkg_resources
     except ImportError:
-        pkg_resources = None
-
-    try:
-        from typing import Callable, List, Tuple
-    except ImportError:
-        pass
+        pkg_resources = None  # type: ignore[assignment]
 
     local_dir = os.path.basename(__file__)
 
-    def get_translation_for(package_name):  # type: (str) -> gettext.NullTranslations
+    def get_translation_for(package_name: str) -> gettext.NullTranslations:  # type: ignore[misc]
         """Find and return gettext translation for package
         (Try to find folder manually if setuptools does not exist)
         """

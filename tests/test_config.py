@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-
 import pytest
 
 from plumbum import local
@@ -74,7 +71,7 @@ two = hello""",
             mypath.unlink()
 
     def test_notouch(self):
-        conf = ConfigINI(fname)
+        ConfigINI(fname)
         assert not local.path(fname).exists()
 
     def test_only_string(self):

@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """Test that PuttyMachine initializes its SshMachine correctly"""
 
 import pytest
 
 from plumbum import PuttyMachine, SshMachine
-from plumbum._testtools import xfail_on_pypy
 
 
 @pytest.fixture(params=["default", "322"])
@@ -13,7 +11,6 @@ def ssh_port(request):
 
 
 class TestPuttyMachine:
-    @xfail_on_pypy
     def test_putty_command(self, mocker, ssh_port):
         local = mocker.patch("plumbum.machines.ssh_machine.local")
         init = mocker.spy(SshMachine, "__init__")
@@ -67,4 +64,4 @@ class TestPuttyMachine:
         user = local.env.user
 
         machine = PuttyMachine(host)
-        assert str(machine) == "putty-ssh://{}@{}".format(user, host)
+        assert str(machine) == f"putty-ssh://{user}@{host}"

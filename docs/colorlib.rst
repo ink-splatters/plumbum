@@ -87,17 +87,17 @@ following, typed into the command line, will restore it:
 
 .. code:: bash
 
-    $ python -m plumbum.colors
+    $ python3 -m plumbum.colors
 
 This also supports command line access to unsafe color manipulations, such as
 
 .. code:: bash
 
-    $ python -m plumbum.colors blue
-    $ python -m plumbum.colors bg red
-    $ python -m plumbum.colors fg 123
-    $ python -m plumbum.colors bg reset
-    $ python -m plumbum.colors underline
+    $ python3 -m plumbum.colors blue
+    $ python3 -m plumbum.colors bg red
+    $ python3 -m plumbum.colors fg 123
+    $ python3 -m plumbum.colors bg reset
+    $ python3 -m plumbum.colors underline
 
 You can use any path or number available as a style.
 
@@ -119,7 +119,7 @@ An example of the usage of unsafe ``colors`` manipulations inside a context mana
         colors.green.now()
         print('This is green ' + colors.underline + 'and now also underlined!')
         print('Underlined' + colors.underline.reset + ' and not underlined but still red')
-    print('This is completly restored, even if an exception is thrown!')
+    print('This is completely restored, even if an exception is thrown!')
 
 Output:
 
@@ -128,7 +128,7 @@ Output:
     <p><font color="#800000">This is in red</font><br/>
     <font color="#008000">This is in green <span style="text-decoration: underline;">and now also underlined!</span></font><br/>
     <font color="#008000"><span style="text-decoration: underline;">Underlined</span> and not underlined but still green.</font><br/>
-    This is completly restored, even if an exception is thrown! </p>
+    This is completely restored, even if an exception is thrown! </p>
 
 We can use ``colors`` instead of ``colors.fg`` for foreground colors.  If we had used ``colors.fg``
 as the context manager, then non-foreground properties, such as ``colors.underline`` or
@@ -149,9 +149,7 @@ These produce strings that can be further manipulated or printed.
 
 
 Finally, you can also print a color to stdout directly using ``color.print("string")``. This
-has the same syntax as the Python 3 print function. In Python 2, if you do not have
-``from __future__ import print_function`` enabled, ``color.print_("string")`` is provided as
-an alternative, following the PyQT convention for method names that match reserved Python syntax.
+has the same syntax as the print function.
 
 An example of safe manipulations::
 
@@ -248,9 +246,9 @@ For example, if you wanted to create an HTMLStyle and HTMLcolors, you could do::
             result = ''
 
             if self.bg and not self.bg.reset:
-                result += '<span style="background-color: {0}">'.format(self.bg.hex_code)
+                result += f'<span style="background-color: {self.bg.hex_code}">'
             if self.fg and not self.fg.reset:
-                result += '<font color="{0}">'.format(self.fg.hex_code)
+                result += f'<font color="{self.fg.hex_code}">'
             for attr in sorted(self.attributes):
                 if self.attributes[attr]:
                     result += '<' + self.attribute_names[attr] + '>'

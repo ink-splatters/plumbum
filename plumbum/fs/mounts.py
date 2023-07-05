@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 import re
 
 
-class MountEntry(object):
+class MountEntry:
     """
     Represents a mount entry (device file, mount point and file system type)
     """
@@ -14,12 +13,8 @@ class MountEntry(object):
         self.options = options.split(",")
 
     def __str__(self):
-        return "{} on {} type {} ({})".format(
-            self.dev,
-            self.point,
-            self.fstype,
-            ",".join(self.options),
-        )
+        options = ",".join(self.options)
+        return f"{self.dev} on {self.point} type {self.fstype} ({options})"
 
 
 MOUNT_PATTERN = re.compile(r"(.+?)\s+on\s+(.+?)\s+type\s+(\S+)(?:\s+\((.+?)\))?")
@@ -43,4 +38,4 @@ def mounted(fs):
     """
     Indicates if a the given filesystem (device file or mount point) is currently mounted
     """
-    return any(fs == entry.dev or fs == entry.point for entry in mount_table())
+    return any(fs in {entry.dev, entry.point} for entry in mount_table())

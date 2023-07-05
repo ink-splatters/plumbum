@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 import os
 import pickle
 import signal
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -22,14 +22,9 @@ from plumbum import (
     ProcessTimedOut,
     local,
 )
-from plumbum._testtools import (
-    skip_on_windows,
-    skip_without_chown,
-    skip_without_tty,
-    xfail_on_pypy,
-)
+from plumbum._testtools import skip_on_windows, skip_without_chown, skip_without_tty
 from plumbum.fs.atomic import AtomicCounterFile, AtomicFile, PidFile
-from plumbum.lib import IS_WIN32, six
+from plumbum.lib import IS_WIN32
 from plumbum.machines.local import LocalCommand, PlumbumLocalPopen
 from plumbum.path import RelativePath
 
@@ -38,14 +33,8 @@ SDIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestLocalPopen:
-    @pytest.mark.skipif(
-        sys.version_info < (3, 2), reason="Context Manager was introduced in Python 3.2"
-    )
     def test_contextmanager(self):
-        if IS_WIN32:
-            command = ["dir"]
-        else:
-            command = ["ls"]
+        command = ["dir"] if IS_WIN32 else ["ls"]
         with PlumbumLocalPopen(command):
             pass
 
@@ -55,14 +44,15 @@ class TestLocalPath:
 
     def test_name(self):
         name = self.longpath.name
-        assert isinstance(name, six.string_types)
-        assert "file.txt" == str(name)
+        assert isinstance(name, str)
+        assert str(name) == "file.txt"
 
     def test_dirname(self):
         name = self.longpath.dirname
         assert isinstance(name, LocalPath)
-        assert "/some/long/path/to" == str(name).replace("\\", "/").lstrip("C:").lstrip(
-            "D:"
+        assert (
+            str(name).replace("\\", "/").lstrip("C:").lstrip("D:")
+            == "/some/long/path/to"
         )
 
     def test_uri(self):
@@ -71,7 +61,7 @@ class TestLocalPath:
             assert pth.startswith("file:///")
             assert pth.endswith(":/some/long/path/to/file.txt")
         else:
-            assert "file:///some/long/path/to/file.txt" == self.longpath.as_uri()
+            assert self.longpath.as_uri() == "file:///some/long/path/to/file.txt"
 
     def test_pickle(self):
         path1 = local.path(".")
@@ -89,7 +79,7 @@ class TestLocalPath:
     def test_chown(self):
         with local.tempdir() as dir:
             p = dir / "foo.txt"
-            p.write(six.b("hello"))
+            p.write(b"hello")
             assert p.uid == os.getuid()
             assert p.gid == os.getgid()
             p.chown(p.uid.name)
@@ -97,12 +87,8 @@ class TestLocalPath:
 
     def test_split(self):
         p = local.path("/var/log/messages")
-        p.split() == ["var", "log", "messages"]
+        assert p.split() == ["var", "log", "messages"]
 
-    @pytest.mark.xfail(
-        sys.platform == "win32" and (sys.version_info[0] == 2),
-        reason="Caseless comparison (at least in pytest) fails on Windows 2.7",
-    )
     def test_suffix(self):
         # This picks up the drive letter differently if not constructed here
         p1 = local.path("/some/long/path/to/file.txt")
@@ -120,10 +106,6 @@ class TestLocalPath:
         with pytest.raises(ValueError):
             p1.with_suffix("nodot")
 
-    @pytest.mark.xfail(
-        sys.platform == "win32" and (sys.version_info[0] == 2),
-        reason="Caseless comparison (at least in pytest) fails on Windows 2.7",
-    )
     def test_newname(self):
         # This picks up the drive letter differently if not constructed here
         p1 = local.path("/some/long/path/to/file.txt")
@@ -154,7 +136,7 @@ class TestLocalPath:
     def test_read_write(self):
         with local.tempdir() as dir:
             f = dir / "test.txt"
-            text = six.b("hello world\xd7\xa9\xd7\x9c\xd7\x95\xd7\x9d").decode("utf8")
+            text = b"hello world\xd7\xa9\xd7\x9c\xd7\x95\xd7\x9d".decode("utf8")
             f.write(text, "utf8")
             text2 = f.read("utf8")
             assert text == text2
@@ -342,7 +324,11 @@ class TestLocalMachine:
             local["non_exist1N9"]()
 
         with pytest.raises(ImportError):
-            from plumbum.cmd import non_exist1N9  # @UnresolvedImport @UnusedImport
+            from plumbum.cmd import non_exist1N9  # noqa: F401
+
+    def test_pathlib(self):
+        ls_path = Path(local.which("ls"))
+        assert "test_local.py" in local[ls_path]().splitlines()
 
     def test_get(self):
         assert str(local["ls"]) == str(local.get("ls"))
@@ -357,17 +343,16 @@ class TestLocalMachine:
 
     def test_shadowed_by_dir(self):
         real_ls = local["ls"]
-        with local.tempdir() as tdir:
-            with local.cwd(tdir):
-                ls_dir = tdir / "ls"
-                ls_dir.mkdir()
-                fake_ls = local["ls"]
-                assert fake_ls.executable == real_ls.executable
+        with local.tempdir() as tdir, local.cwd(tdir):
+            ls_dir = tdir / "ls"
+            ls_dir.mkdir()
+            fake_ls = local["ls"]
+            assert fake_ls.executable == real_ls.executable
 
-                local.env.path.insert(0, tdir)
-                fake_ls = local["ls"]
-                del local.env.path[0]
-                assert fake_ls.executable == real_ls.executable
+            local.env.path.insert(0, tdir)
+            fake_ls = local["ls"]
+            del local.env.path[0]
+            assert fake_ls.executable == real_ls.executable
 
     def test_repr_command(self):
         assert "BG" in repr(BG)
@@ -443,22 +428,22 @@ class TestLocalMachine:
             local.python("-c", "import os;os.environ['FOOBAR72']")
         local.env["FOOBAR72"] = "spAm"
         assert local.python(
-            "-c", "import os;print (os.environ['FOOBAR72'])"
+            "-c", "import os; print(os.environ['FOOBAR72'])"
         ).splitlines() == ["spAm"]
 
         with local.env(FOOBAR73=1889):
             assert local.python(
-                "-c", "import os;print (os.environ['FOOBAR73'])"
+                "-c", "import os; print(os.environ['FOOBAR73'])"
             ).splitlines() == ["1889"]
             with local.env(FOOBAR73=1778):
                 assert local.python(
-                    "-c", "import os;print (os.environ['FOOBAR73'])"
+                    "-c", "import os; print(os.environ['FOOBAR73'])"
                 ).splitlines() == ["1778"]
             assert local.python(
-                "-c", "import os;print (os.environ['FOOBAR73'])"
+                "-c", "import os; print(os.environ['FOOBAR73'])"
             ).splitlines() == ["1889"]
         with pytest.raises(ProcessExecutionError):
-            local.python("-c", "import os;os.environ['FOOBAR73']")
+            local.python("-c", "import os; os.environ['FOOBAR73']")
 
         # path manipulation
         with pytest.raises(CommandNotFound):
@@ -469,14 +454,12 @@ class TestLocalMachine:
             assert p == local.cwd / "not-in-path" / "dummy-executable"
 
     def test_local(self):
-        from plumbum.cmd import cat, head
-
         assert "plumbum" in str(local.cwd)
         assert "PATH" in local.env.getdict()
         assert local.path("foo") == os.path.join(os.getcwd(), "foo")
         local.which("ls")
         local["ls"]
-        assert local.python("-c", "print ('hi there')").splitlines() == ["hi there"]
+        assert local.python("-c", "print('hi there')").splitlines() == ["hi there"]
 
     @skip_on_windows
     def test_piping(self):
@@ -542,7 +525,7 @@ class TestLocalMachine:
         cat["/dev/urndom"] & FG(1)
         assert "urndom" in capfd.readouterr()[1]
 
-        assert "" == capfd.readouterr()[1]
+        assert capfd.readouterr()[1] == ""
 
         (cat["/dev/urndom"] | head["-c", "10"]) & FG(retcode=1)
         assert "urndom" in capfd.readouterr()[1]
@@ -561,12 +544,22 @@ class TestLocalMachine:
         from plumbum.cmd import bash
 
         cmd = bash["-ce", "for ((i=0;1==1;i++)); do echo $i; sleep .3; done"]
-        with pytest.raises(ProcessTimedOut):
+        with pytest.raises(ProcessTimedOut):  # noqa: PT012
             for i, (out, err) in enumerate(cmd.popen().iter_lines(timeout=1)):
                 assert not err
                 assert out
                 print(i, "out:", out)
         assert i in (2, 3)  # Mac is a bit flakey
+
+    @skip_on_windows
+    def test_iter_lines_buffer_size(self):
+        from plumbum.cmd import bash
+
+        cmd = bash["-ce", "for ((i=0;i<100;i++)); do echo $i; done; false"]
+        with pytest.raises(ProcessExecutionError) as e:  # noqa: PT012
+            for _ in cmd.popen().iter_lines(timeout=1, buffer_size=5):
+                pass
+        assert e.value.stdout == "\n".join(map(str, range(95, 100))) + "\n"
 
     @skip_on_windows
     def test_iter_lines_timeout_by_type(self):
@@ -578,7 +571,7 @@ class TestLocalMachine:
         ]
         types = {1: "out:", 2: "err:"}
         counts = {1: 0, 2: 0}
-        with pytest.raises(ProcessTimedOut):
+        with pytest.raises(ProcessTimedOut):  # noqa: PT012
             # Order is important on mac
             for typ, line in cmd.popen().iter_lines(timeout=1, mode=BY_TYPE):
                 counts[typ] += 1
@@ -590,14 +583,14 @@ class TestLocalMachine:
     def test_iter_lines_error(self):
         from plumbum.cmd import ls
 
-        with pytest.raises(ProcessExecutionError) as err:
-            for i, lines in enumerate(ls["--bla"].popen()):
+        with pytest.raises(ProcessExecutionError) as err:  # noqa: PT012
+            for i, _lines in enumerate(ls["--bla"].popen()):  # noqa: B007
                 pass
             assert i == 1
         assert (
-            "/bin/ls: unrecognized option '--bla'" in err.value.stderr
-            or "bin/ls: illegal option -- -" in err.value.stderr
-        )
+            "ls: unrecognized option" in err.value.stderr
+            and "--bla" in err.value.stderr
+        ) or "ls: illegal option -- -" in err.value.stderr
 
     @skip_on_windows
     def test_iter_lines_line_timeout(self):
@@ -605,7 +598,7 @@ class TestLocalMachine:
 
         cmd = bash["-ce", "for ((i=0;1==1;i++)); do echo $i; sleep $i; done"]
 
-        with pytest.raises(ProcessLineTimedOut):
+        with pytest.raises(ProcessLineTimedOut):  # noqa: PT012
             # Order is important on mac
             for i, (out, err) in enumerate(cmd.popen().iter_lines(line_timeout=0.2)):
                 print(i, "out:", out)
@@ -634,17 +627,36 @@ class TestLocalMachine:
 
         result = echo["This is fun"] & TEE
         assert result[1] == "This is fun\n"
-        assert "This is fun\n" == capfd.readouterr()[0]
+        assert capfd.readouterr()[0] == "This is fun\n"
 
     @skip_on_windows
     def test_tee_race(self, capfd):
         from plumbum.cmd import seq
 
-        EXPECT = "".join("{}\n".format(i) for i in range(1, 5001))
+        EXPECT = "".join(f"{i}\n" for i in range(1, 5001))
         for _ in range(5):
             result = seq["1", "5000"] & TEE
             assert result[1] == EXPECT
-            assert EXPECT == capfd.readouterr()[0]
+            assert capfd.readouterr()[0] == EXPECT
+
+    @skip_on_windows
+    @pytest.mark.parametrize(
+        ("modifier", "expected"),
+        [
+            (FG, None),
+            (TF(FG=True), True),
+            (RETCODE(FG=True), 0),
+            (TEE, (0, "meow", "")),
+        ],
+    )
+    def test_redirection_stdin_modifiers_fg(self, modifier, expected, capfd):
+        "StdinDataRedirection compatible with modifiers which write to stdout"
+        from plumbum.cmd import cat
+
+        cmd = cat << "meow"
+
+        assert cmd & modifier == expected
+        assert capfd.readouterr() == ("meow", "")
 
     @skip_on_windows
     def test_logger_pipe(self):
@@ -731,12 +743,17 @@ class TestLocalMachine:
             ls("-a", "")  # check that empty strings are rendered correctly
         assert execinfo.value.argv[-2:] == ["-a", ""]
 
-    def test_tempdir(self):
-        from plumbum.cmd import cat
+    def test_exception_pickling(self):
+        import pickle
 
+        with pytest.raises(ProcessExecutionError) as exc_info:
+            local.cmd.ls("no-file")
+        assert pickle.loads(pickle.dumps(exc_info.value)).argv == exc_info.value.argv
+
+    def test_tempdir(self):
         with local.tempdir() as dir:
             assert dir.is_dir()
-            data = six.b("hello world")
+            data = b"hello world"
             with open(str(dir / "test.txt"), "wb") as f:
                 f.write(data)
             with open(str(dir / "test.txt"), "rb") as f:
@@ -745,11 +762,9 @@ class TestLocalMachine:
         assert not dir.exists()
 
     def test_direct_open_tmpdir(self):
-        from plumbum.cmd import cat
-
         with local.tempdir() as dir:
             assert dir.is_dir()
-            data = six.b("hello world")
+            data = b"hello world"
             with open(dir / "test.txt", "wb") as f:
                 f.write(data)
             with open(dir / "test.txt", "rb") as f:
@@ -765,13 +780,13 @@ class TestLocalMachine:
 
     def test_read_write_unicode(self):
         with local.tempdir() as tmp:
-            data = six.u("hello world")
+            data = "hello world"
             (tmp / "foo.txt").write(data)
             assert (tmp / "foo.txt").read() == data
 
     def test_read_write_bin(self):
         with local.tempdir() as tmp:
-            data = six.b("hello world")
+            data = b"hello world"
             (tmp / "foo.txt").write(data)
             assert (tmp / "foo.txt").read(mode="rb") == data
 
@@ -791,10 +806,10 @@ class TestLocalMachine:
         assert list(local.list_processes())
 
     def test_pgrep(self):
-        assert list(local.pgrep("python"))
+        assert list(local.pgrep("[pP]ython"))
 
     def _generate_sigint(self):
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(KeyboardInterrupt):  # noqa: PT012
             if sys.platform == "win32":
                 from win32api import GenerateConsoleCtrlEvent
 
@@ -840,17 +855,17 @@ class TestLocalMachine:
     def test_atomic_file(self):
         af1 = AtomicFile("tmp.txt")
         af2 = AtomicFile("tmp.txt")
-        af1.write_atomic(six.b("foo"))
-        af2.write_atomic(six.b("bar"))
-        assert af1.read_atomic() == six.b("bar")
-        assert af2.read_atomic() == six.b("bar")
+        af1.write_atomic(b"foo")
+        af2.write_atomic(b"bar")
+        assert af1.read_atomic() == b"bar"
+        assert af2.read_atomic() == b"bar"
         local.path("tmp.txt").delete()
 
     @skip_on_windows
     def test_atomic_file2(self):
         af = AtomicFile("tmp.txt")
 
-        code = """from __future__ import with_statement
+        code = """\
 from plumbum.fs.atomic import AtomicFile
 af = AtomicFile("tmp.txt")
 try:
@@ -867,7 +882,7 @@ except (OSError, IOError):
 
     @skip_on_windows
     def test_pid_file(self):
-        code = """from __future__ import with_statement
+        code = """\
 from plumbum.fs.atomic import PidFile, PidFileTaken
 try:
     with PidFile("mypid"):
@@ -951,7 +966,7 @@ for _ in range({}):
         c = ls["-l", ["-a", "*.py"]]
         assert c.formulate()[1:] == ["-l", "-a", "*.py"]
 
-    def test_contains(self):
+    def test_contains_ls(self):
         assert "ls" in local
 
     def test_issue_139(self):
@@ -1004,13 +1019,13 @@ for _ in range({}):
 
         result = echo["This is fun"].run_tee()
         assert result[1] == "This is fun\n"
-        assert "This is fun\n" == capfd.readouterr()[0]
+        assert capfd.readouterr()[0] == "This is fun\n"
 
     def test_run_tf(self):
         from plumbum.cmd import ls
 
         f = ls["-l"].run_tf()
-        assert f == True
+        assert f is True
 
     def test_run_retcode(self):
         from plumbum.cmd import ls
@@ -1043,33 +1058,40 @@ class TestLocalEncoding:
         out = echo(self.richstr)
         assert self.richstr in out
 
-    @pytest.mark.xfail(
-        IS_WIN32 and sys.version_info < (3, 6),
-        reason="Unicode output on Windows requires Python 3.6+",
-    )
     @pytest.mark.usefixtures("cleandir")
     def test_out_rich(self):
-        import io
-
         from plumbum.cmd import cat
 
-        with io.open("temp.txt", "w", encoding="utf8") as f:
+        with open("temp.txt", "w", encoding="utf8") as f:
             f.write(self.richstr)
         out = cat("temp.txt")
         assert self.richstr in out
 
     @pytest.mark.xfail(IS_WIN32, reason="Unicode path not supported on Windows for now")
-    @pytest.mark.skipif(not six.PY3, reason="Unicode paths only supported on Python 3")
     @pytest.mark.usefixtures("cleandir")
     def test_runfile_rich(self):
         import os
         import stat
 
-        name = self.richstr + six.str("_program")
+        name = self.richstr + "_program"
         with open(name, "w") as f:
-            f.write("#!{}\nprint('yes')".format(sys.executable))
+            f.write(f"#!{sys.executable}\nprint('yes')")
 
         st = os.stat(name)
         os.chmod(name, st.st_mode | stat.S_IEXEC)
 
         assert "yes" in local[local.cwd / name]()
+
+
+@pytest.mark.skipif(
+    IS_WIN32, reason="Windows does not support these weird paths, so unambiguous there"
+)
+def test_local_glob_path(tmpdir):
+    p = tmpdir.mkdir("a*b?c")
+    p2 = tmpdir.mkdir("aanythingbxc")
+    p2.join("something.txt").write("content")
+    p.join("hello.txt").write("content")
+    p.join("other.txt").write("content")
+
+    pp = LocalPath(str(p))
+    assert len(pp // "*.txt") == 2

@@ -1,23 +1,9 @@
-# -*- coding: utf-8 -*-
 import sys
-import time
+from collections import OrderedDict
 from contextlib import contextmanager
-
-import pytest
+from io import StringIO
 
 from plumbum.cli.terminal import Progress, ask, choose, hexdump, prompt
-from plumbum.lib import StringIO
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    try:
-        from ordereddict import OrderedDict
-    except ImportError:
-        OrderedDict = None
-needs_od = pytest.mark.skipif(
-    OrderedDict is None, reason="Ordered dict not available (Py 2.6)"
-)
 
 
 @contextmanager
@@ -116,10 +102,9 @@ class TestTerminal:
 
     def test_choose_dict(self):
         with send_stdin("23\n1"):
-            value = choose("Pick", dict(one="a", two="b"))
+            value = choose("Pick", {"one": "a", "two": "b"})
             assert value in ("a", "b")
 
-    @needs_od
     def test_ordered_dict(self):
         dic = OrderedDict()
         dic["one"] = "a"
@@ -131,7 +116,6 @@ class TestTerminal:
             value = choose("Pick", dic)
             assert value == "b"
 
-    @needs_od
     def test_choose_dict_default(self, capsys):
         dic = OrderedDict()
         dic["one"] = "a"
@@ -154,9 +138,9 @@ class TestTerminal:
         assert "\n".join(hexdump(StringIO(data))) == output
 
     def test_progress(self, capsys):
-        for i in Progress.range(4, has_output=True, timer=False):
+        for _ in Progress.range(4, has_output=True, timer=False):
             print("hi")
-        stdout, stderr = capsys.readouterr()
+        stdout, _stderr = capsys.readouterr()
         output = """\
 0% complete
 0% complete
@@ -173,8 +157,8 @@ hi
         assert stdout == output
 
     def test_progress_empty(self, capsys):
-        for i in Progress.range(0, has_output=True, timer=False):
+        for _ in Progress.range(0, has_output=True, timer=False):
             print("hi")
-        stdout, stderr = capsys.readouterr()
+        stdout = capsys.readouterr().out
         output = "0/0 complete"
         assert output in stdout

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function
-
 import functools
+import inspect
 import os
 import sys
 from collections import defaultdict
@@ -9,7 +7,7 @@ from textwrap import TextWrapper
 
 from plumbum import colors, local
 from plumbum.cli.i18n import get_translation_for
-from plumbum.lib import getdoc, six
+from plumbum.lib import getdoc
 
 from .switches import (
     CountOf,
@@ -42,7 +40,7 @@ class ShowVersion(SwitchError):
     pass
 
 
-class SwitchParseInfo(object):
+class SwitchParseInfo:
     __slots__ = ["swname", "val", "index", "__weakref__"]
 
     def __init__(self, swname, val, index):
@@ -51,7 +49,7 @@ class SwitchParseInfo(object):
         self.index = index
 
 
-class Subcommand(object):
+class Subcommand:
     def __init__(self, name, subapplication):
         self.name = name
         self.subapplication = subapplication
@@ -63,7 +61,7 @@ class Subcommand(object):
             try:
                 cls = getattr(mod, clsname)
             except AttributeError:
-                raise ImportError("cannot import name {}".format(clsname))
+                raise ImportError(f"cannot import name {clsname}") from None
             self.subapplication = cls
         return self.subapplication
 
@@ -80,7 +78,7 @@ _switch_groups_l10n = [T_("Switches"), T_("Meta-switches")]
 # ===================================================================================================
 
 
-class Application(object):
+class Application:
     """The base class for CLI applications; your "entry point" class should derive from it,
     define the relevant switch functions and attributes, and the ``main()`` function.
     The class defines two overridable "meta switches" for version (``-v``, ``--version``)
@@ -175,10 +173,10 @@ class Application(object):
         instead of an expression with a dot in it."""
 
         if executable is None:
-            return cls.run()
             # This return value was not a class instance, so __init__ is never called
-        else:
-            return super(Application, cls).__new__(cls)
+            return cls.run()
+
+        return super().__new__(cls)
 
     def __init__(self, executable):
         # Filter colors
@@ -195,7 +193,7 @@ class Application(object):
         # Allow None for the colors
         self.COLOR_GROUPS = defaultdict(
             lambda: colors.do_nothing,
-            dict() if type(self).COLOR_GROUPS is None else type(self).COLOR_GROUPS,
+            {} if type(self).COLOR_GROUPS is None else type(self).COLOR_GROUPS,
         )
 
         self.COLOR_GROUP_TITLES = defaultdict(
@@ -288,9 +286,8 @@ class Application(object):
         """
 
         def wrapper(subapp):
-            attrname = "_subcommand_{}".format(
-                subapp if isinstance(subapp, str) else subapp.__name__
-            )
+            subname = subapp if isinstance(subapp, str) else subapp.__name__
+            attrname = f"_subcommand_{subname}"
             setattr(cls, attrname, Subcommand(name, subapp))
             return subapp
 
@@ -298,10 +295,10 @@ class Application(object):
 
     def _get_partial_matches(self, partialname):
         matches = []
-        for switch in self._switches_by_name:
-            if switch.startswith(partialname):
+        for switch_ in self._switches_by_name:
+            if switch_.startswith(partialname):
                 matches += [
-                    switch,
+                    switch_,
                 ]
         return matches
 
@@ -323,11 +320,11 @@ class Application(object):
                 subcmd = self._subcommands[a].get()
                 self.nested_command = (
                     subcmd,
-                    [self.PROGNAME + " " + self._subcommands[a].name] + argv,
+                    [self.PROGNAME + " " + self._subcommands[a].name, *argv],
                 )
                 break
 
-            elif a.startswith("--") and len(a) >= 3:
+            if a.startswith("--") and len(a) >= 3:
                 # [--name], [--name=XXX], [--name, XXX], [--name, ==, XXX],
                 # [--name=, XXX], [--name, =XXX]
                 eqsign = a.find("=")
@@ -402,12 +399,11 @@ class Application(object):
                 else:
                     if swfuncs[swinfo.func].swname == swname:
                         raise SwitchError(T_("Switch {0} already given").format(swname))
-                    else:
-                        raise SwitchError(
-                            T_("Switch {0} already given ({1} is equivalent)").format(
-                                swfuncs[swinfo.func].swname, swname
-                            )
+                    raise SwitchError(
+                        T_("Switch {0} already given ({1} is equivalent)").format(
+                            swfuncs[swinfo.func].swname, swname
                         )
+                    )
             else:
                 if swinfo.list:
                     swfuncs[swinfo.func] = SwitchParseInfo(swname, ([val],), index)
@@ -428,7 +424,7 @@ class Application(object):
                 continue  # skip if overridden by command line arguments
 
             val = self._handle_argument(envval, swinfo.argtype, env)
-            envname = "${}".format(env)
+            envname = f"${env}"
             if swinfo.list:
                 # multiple values over environment variables are not supported,
                 # this will require some sort of escaping and separator convention
@@ -443,35 +439,33 @@ class Application(object):
     @classmethod
     def autocomplete(cls, argv):
         """This is supplied to make subclassing and testing argument completion methods easier"""
-        pass
 
     @staticmethod
     def _handle_argument(val, argtype, name):
         if argtype:
             try:
                 return argtype(val)
-            except (TypeError, ValueError):
-                ex = sys.exc_info()[1]  # compat
+            except (TypeError, ValueError) as ex:
                 raise WrongArgumentType(
                     T_(
                         "Argument of {name} expected to be {argtype}, not {val!r}:\n    {ex!r}"
                     ).format(name=name, argtype=argtype, val=val, ex=ex)
-                )
+                ) from None
         else:
             return NotImplemented
 
     def _validate_args(self, swfuncs, tailargs):
-        if six.get_method_function(self.help) in swfuncs:
+        if self.help.__func__ in swfuncs:
             raise ShowHelp()
-        if six.get_method_function(self.helpall) in swfuncs:
+        if self.helpall.__func__ in swfuncs:
             raise ShowHelpAll()
-        if six.get_method_function(self.version) in swfuncs:
+        if self.version.__func__ in swfuncs:
             raise ShowVersion()
 
         requirements = {}
         exclusions = {}
         for swinfo in self._switches_by_func.values():
-            if swinfo.mandatory and not swinfo.func in swfuncs:
+            if swinfo.mandatory and swinfo.func not in swfuncs:
                 raise MissingMandatorySwitch(
                     T_("Switch {0} is mandatory").format(
                         "/".join(
@@ -506,8 +500,14 @@ class Application(object):
                     )
                 )
 
-        m = six.getfullargspec(self.main)
-        max_args = six.MAXSIZE if m.varargs else len(m.args) - 1
+        m = inspect.getfullargspec(self.main)
+
+        if sys.version_info < (3, 10):
+            sig = inspect.signature(self.main)
+        else:
+            sig = inspect.signature(self.main, eval_str=True)
+
+        max_args = sys.maxsize if m.varargs else len(m.args) - 1
         min_args = len(m.args) - 1 - (len(m.defaults) if m.defaults else 0)
         if len(tailargs) < min_args:
             raise PositionalArgumentsError(
@@ -517,7 +517,7 @@ class Application(object):
                     min_args,
                 ).format(min_args, tailargs)
             )
-        elif len(tailargs) > max_args:
+        if len(tailargs) > max_args:
             raise PositionalArgumentsError(
                 ngettext(
                     "Expected at most {0} positional argument, got {1}",
@@ -526,7 +526,7 @@ class Application(object):
                 ).format(max_args, tailargs)
             )
 
-        # Positional arguement validataion
+        # Positional argument validation
         if hasattr(self.main, "positional"):
             tailargs = self._positional_validate(
                 tailargs,
@@ -536,17 +536,24 @@ class Application(object):
                 m.varargs,
             )
 
-        elif hasattr(m, "annotations"):
+        elif hasattr(m, "annotations") and m.annotations:
             args_names = list(m.args[1:])
             positional = [None] * len(args_names)
             varargs = None
 
             # All args are positional, so convert kargs to positional
             for item in m.annotations:
+                annotation = (
+                    sig.parameters[item].annotation
+                    if item != "return"
+                    else sig.return_annotation
+                )
+                if sys.version_info < (3, 10) and isinstance(annotation, str):
+                    annotation = eval(annotation)  # noqa: PGH001
                 if item == m.varargs:
-                    varargs = m.annotations[item]
+                    varargs = annotation
                 elif item != "return":
-                    positional[args_names.index(item)] = m.annotations[item]
+                    positional[args_names.index(item)] = annotation
 
             tailargs = self._positional_validate(
                 tailargs, positional, varargs, m.args[1:], m.varargs
@@ -563,7 +570,6 @@ class Application(object):
         out_args = list(args)
 
         for i in range(min(len(args), len(validator_list))):
-
             if validator_list[i] is not None:
                 out_args[i] = self._handle_argument(
                     args[i], validator_list[i], argnames[i]
@@ -581,7 +587,11 @@ class Application(object):
         return out_args
 
     @classmethod
-    def run(cls, argv=None, exit=True):  # @ReservedAssignment
+    def run(
+        cls,
+        argv=None,
+        exit=True,  # pylint: disable=redefined-builtin
+    ):
         """
         Runs the application, taking the arguments from ``sys.argv`` by default if
         nothing is passed. If ``exit`` is
@@ -609,8 +619,7 @@ class Application(object):
             inst.helpall()
         except ShowVersion:
             inst.version()
-        except SwitchError:
-            ex = sys.exc_info()[1]  # compatibility with python 2.5
+        except SwitchError as ex:
             print(T_("Error: {0}").format(ex))
             print(T_("------"))
             inst.help()
@@ -675,9 +684,9 @@ class Application(object):
         """Parses keywords (positional arguments), used by invoke."""
         swfuncs = {}
         for index, (swname, val) in enumerate(switches.items(), 1):
-            switch = getattr(type(self), swname)
-            swinfo = self._switches_by_func[switch._switch_info.func]
-            if isinstance(switch, CountOf):
+            switch_local = getattr(type(self), swname)
+            swinfo = self._switches_by_func[switch_local._switch_info.func]
+            if isinstance(switch_local, CountOf):
                 p = (range(val),)
             elif swinfo.list and not hasattr(val, "__iter__"):
                 raise SwitchError(
@@ -706,9 +715,10 @@ class Application(object):
                 print(T_("------"))
                 self.help()
                 return 1
-        else:
-            print(T_("main() not implemented"))
-            return 1
+            return 0
+
+        print(T_("main() not implemented"))
+        return 1
 
     def cleanup(self, retcode):
         """Called after ``main()`` and all sub-applications have executed, to perform any necessary cleanup.
@@ -725,11 +735,11 @@ class Application(object):
     def helpall(self):
         """Prints help messages of all sub-commands and quits"""
         self.help()
-        print("")
+        print()
 
         if self._subcommands:
             for name, subcls in sorted(self._subcommands.items()):
-                subapp = (subcls.get())("{} {}".format(self.PROGNAME, name))
+                subapp = (subcls.get())(f"{self.PROGNAME} {name}")
                 subapp.parent = self
                 for si in subapp._switches_by_func.values():
                     if si.group == "Meta-switches":
@@ -746,7 +756,7 @@ class Application(object):
         """Prints this help message and quits"""
         if self._get_prog_version():
             self.version()
-            print("")
+            print()
         if self.DESCRIPTION:
             print(self.DESCRIPTION.strip() + "\n")
 
@@ -783,8 +793,7 @@ class Application(object):
 
                 if len(line) == 0:
                     # Starting a new paragraph
-                    for item in current():
-                        yield item
+                    yield from current()
                     yield "", "", ""
 
                     paragraph = None
@@ -803,8 +812,7 @@ class Application(object):
 
                     if is_list_item(line):
                         # Done with current paragraph
-                        for item in current():
-                            yield item
+                        yield from current()
 
                         if has_invisible_bullet(line):
                             line = line[1:]
@@ -827,8 +835,7 @@ class Application(object):
                             # Add to current paragraph
                             paragraph = paragraph + " " + line
 
-            for item in current():
-                yield item
+            yield from current()
 
         def wrapped_paragraphs(text, width):
             """Yields each line of each paragraph of text after wrapping them on 'width' number of columns.
@@ -848,8 +855,7 @@ class Application(object):
                     subsequent_indent=subsequent_indent,
                 )
                 w = wrapper.wrap(paragraph)
-                for line in w:
-                    yield line
+                yield from w
                 if len(w) == 0:
                     yield ""
 
@@ -857,20 +863,16 @@ class Application(object):
         for line in wrapped_paragraphs(self.DESCRIPTION_MORE, cols):
             print(line)
 
-        m = six.getfullargspec(self.main)
+        m = inspect.getfullargspec(self.main)
         tailargs = m.args[1:]  # skip self
         if m.defaults:
             for i, d in enumerate(reversed(m.defaults)):
-                tailargs[-i - 1] = "[{}={}]".format(tailargs[-i - 1], d)
+                tailargs[-i - 1] = f"[{tailargs[-i - 1]}={d}]"
         if m.varargs:
-            tailargs.append(
-                "{}...".format(
-                    m.varargs,
-                )
-            )
+            tailargs.append(f"{m.varargs}...")
         tailargs = " ".join(tailargs)
 
-        utc = self.COLOR_USAGE_TITLE if self.COLOR_USAGE_TITLE else self.COLOR_USAGE
+        utc = self.COLOR_USAGE_TITLE or self.COLOR_USAGE
         print(utc | T_("Usage:"))
 
         with self.COLOR_USAGE:
@@ -899,7 +901,7 @@ class Application(object):
                     lgrp = T_(grp) if grp in _switch_groups else grp
                     print(self.COLOR_GROUP_TITLES[grp] | lgrp + ":")
 
-                for si in sorted(swinfos, key=lambda si: si.names):
+                for si in sorted(swinfos, key=lambda x: x.names):
                     swnames = ", ".join(
                         ("-" if len(n) == 1 else "--") + n
                         for n in si.names
@@ -911,14 +913,14 @@ class Application(object):
                             typename = si.argtype.__name__
                         else:
                             typename = str(si.argtype)
-                        argtype = " {}:{}".format(si.argname.upper(), typename)
+                        argtype = f" {si.argname.upper()}:{typename}"
                     else:
                         argtype = ""
                     prefix = swnames + argtype
                     yield si, prefix, self.COLOR_GROUPS[grp]
 
                 if show_groups:
-                    print("")
+                    print()
 
         sw_width = (
             max(len(prefix) for si, prefix, color in switchs(by_groups, False)) + 4
@@ -928,20 +930,20 @@ class Application(object):
         indentation = "\n" + " " * (cols - wrapper.width)
 
         for switch_info, prefix, color in switchs(by_groups, True):
-            help = switch_info.help  # @ReservedAssignment
+            help_txt = switch_info.help
             if switch_info.list:
-                help += T_("; may be given multiple times")
+                help_txt += T_("; may be given multiple times")
             if switch_info.mandatory:
-                help += T_("; required")
+                help_txt += T_("; required")
             if switch_info.requires:
-                help += T_("; requires {0}").format(
+                help_txt += T_("; requires {0}").format(
                     ", ".join(
                         (("-" if len(switch) == 1 else "--") + switch)
                         for switch in switch_info.requires
                     )
                 )
             if switch_info.excludes:
-                help += T_("; excludes {0}").format(
+                help_txt += T_("; excludes {0}").format(
                     ", ".join(
                         (("-" if len(switch) == 1 else "--") + switch)
                         for switch in switch_info.excludes
@@ -949,7 +951,7 @@ class Application(object):
                 )
 
             msg = indentation.join(
-                wrapper.wrap(" ".join(l.strip() for l in help.splitlines()))
+                wrapper.wrap(" ".join(ln.strip() for ln in help_txt.splitlines()))
             )
 
             if len(prefix) + wrapper.width >= cols:
@@ -964,17 +966,19 @@ class Application(object):
             for name, subcls in sorted(self._subcommands.items()):
                 with gc:
                     subapp = subcls.get()
-                    doc = subapp.DESCRIPTION if subapp.DESCRIPTION else getdoc(subapp)
+                    doc = subapp.DESCRIPTION or getdoc(subapp)
                     if self.SUBCOMMAND_HELPMSG:
-                        help = doc + "; " if doc else ""  # @ReservedAssignment
-                        help += self.SUBCOMMAND_HELPMSG.format(
+                        help_str = doc + "; " if doc else ""
+                        help_str += self.SUBCOMMAND_HELPMSG.format(
                             parent=self.PROGNAME, sub=name
                         )
                     else:
-                        help = doc if doc else ""  # @ReservedAssignment
+                        help_str = doc or ""
 
                     msg = indentation.join(
-                        wrapper.wrap(" ".join(l.strip() for l in help.splitlines()))
+                        wrapper.wrap(
+                            " ".join(ln.strip() for ln in help_str.splitlines())
+                        )
                     )
 
                     if len(name) + wrapper.width >= cols:
@@ -1012,4 +1016,4 @@ class Application(object):
         """Prints the program's version and quits"""
         ver = self._get_prog_version()
         ver_name = ver if ver is not None else T_("(version not set)")
-        print("{} {}".format(self.PROGNAME, ver_name))
+        print(f"{self.PROGNAME} {ver_name}")

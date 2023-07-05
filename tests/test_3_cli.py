@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from plumbum import cli
 
 
@@ -16,7 +14,7 @@ class TestProg3:
 
 
 class Main4Validator(cli.Application):
-    def main(self, myint: int, myint2: int, *mylist: int) -> None:
+    def main(self, myint: int, myint2: int, *mylist: "int") -> None:
         print(myint, myint2, mylist)
 
 
